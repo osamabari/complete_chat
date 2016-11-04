@@ -1,0 +1,40 @@
+{
+  "name": "complete_chat",
+  "version": "1.0.0",
+  "description": "this is cmpete chat like wahtsapp",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osamabari/complete_chat.git"
+  },
+  "keywords": [
+    "Complete",
+    "chat",
+    "Node",
+    "js",
+    "Scoket",
+    "IO",
+    "Mongo",
+    "Db",
+    "Redis",
+    "Compelte",
+    "chat",
+    "like",
+    "whatsapp",
+    "one",
+    "to",
+    "one",
+    "and",
+    "group",
+    "chat"
+  ],
+  "author": "Osama Bari",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/osamabari/complete_chat/issues"
+  },
+  "homepage": "https://github.com/osamabari/complete_chat#readme"
+}
