@@ -44,11 +44,15 @@ io.sockets.on('connection', function (socket) {
 
     //console.log(socket);
 
-    socket.on('adduserId', function (userIds) {
-        console.log("Userid=" + userIds);
-        socket.room = userIds;
-        socket.join(userIds);
-        var query = Chat.find({request_id: userIds});
+    /*
+    name: adduserId
+    params: roomId (its a room id of users)
+    */
+    socket.on('adduserId', function (roomId) {
+        console.log("roomId=" + roomId);
+        socket.room = roomId;
+        socket.join(roomId);
+        var query = Chat.find({request_id: roomId});
         query.limit(10);
         query.sort('-sent').exec(function (err, docs) {
             console.log(docs);
@@ -59,8 +63,23 @@ io.sockets.on('connection', function (socket) {
         
     });
 
-
-    // when the client emits 'sendchat', this listens and executes
+     /*
+    name: sendchat
+    desciptions: when the client emits 'sendchat', this listens and executes
+    params: 
+    {
+    data:{
+    from_id: 1,
+    to_id: 2,
+    message: 'hello',
+    cat_id: '1',
+    sub_cat_id: '3',
+    local_timestamp: 12343324,
+    room_id: '123',
+    timestamp: 1440234
+    }
+    }
+    */
     socket.on('sendchat', function (data) {
         console.log(JSON.parse(data));
         console.log("Android="+data);
@@ -74,7 +93,20 @@ io.sockets.on('connection', function (socket) {
 
 
   
-
+    /*
+    name: userImage
+    desciptions: when the client emits 'sendchat', this listens and executes
+    params: 
+    {
+    msg:{
+   imageMetaData: 'asd923asd89',
+   imageData: 'asdasdasd'asdad23
+    },
+    client:{
+    id:1
+    }
+    }
+    */
     //for images
       socket.on('userImage', function(msg,callback){
         console.log('on user img.....');
@@ -126,6 +158,18 @@ io.sockets.on('connection', function (socket) {
         }
     });
 
+       /*
+    name: typing
+    desciptions: 
+    params: 
+    {
+    data:{
+    oppUser: 1,
+    currentUser: 2
+    }
+    }
+    */
+
       socket.on('typing', function(data, callback){
         if(data.oppUser in users)
         {
@@ -133,6 +177,18 @@ io.sockets.on('connection', function (socket) {
             console.log('typing ..... ');
             }
     });
+
+        /*
+    name: stopTyping
+    desciptions: 
+    params: 
+    {
+    data:{
+    oppUser: 1,
+    currentUser: 2
+    }
+    }
+    */
     
     socket.on('stopTyping', function(data, callback){
         if(data.oppUser in users)
@@ -143,6 +199,17 @@ io.sockets.on('connection', function (socket) {
     });
 
 
+      /*
+    name: shareContact
+    desciptions: 
+    params: 
+    {
+    data:{
+    toUserId: 1,
+    contactdetails: 2
+    }
+    }
+    */
     socket.on('shareContact',function(data,callback){
         var dtc=JSON.stringify(data.contactdetails);
         console.log("contactdetails>>>>>>"+dtc);
@@ -157,15 +224,28 @@ io.sockets.on('connection', function (socket) {
         }
     });  
 
+
+     /*
+    name: sendMessage
+    desciptions: 
+    params: 
+    {
+    data:{
+    msg: 'asdasd',
+    name: '1'
+    }
+    }
+    */
+
     //for whisper (one to one chat)
         socket.on('sendMessage', function(data, callback){
        
         console.log('recived' + data);
         if(data.name){
            msg = data.msg;
-            var ind = data.msg;
+
       
-                var name = data.msg;
+                var name = data.name;
                 var msg = data.msg;
                 if(name in users){
                     console.log('sending message to user!');
@@ -188,6 +268,8 @@ io.sockets.on('connection', function (socket) {
         }
     });
 
+
+        
 
           // when the user disconnects.. perform this
     socket.on('disconnect', function () {
