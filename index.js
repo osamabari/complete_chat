@@ -6,8 +6,16 @@ var express = require('express'),
     mongoose = require('mongoose'),
     users = {};
 
-server.listen(3000);
 
+
+mongoose.Promise = global.Promise;
+
+server.listen(8008);
+
+
+app.get('/', function(req, res){
+    res.sendfile(__dirname + '/index.html');
+});
 
 mongoose.connect('mongodb://localhost/chatData', function(err) {
     if (err) {
@@ -32,6 +40,7 @@ var chatSchema = mongoose.Schema({
     request_id: Number,
     room_id: Number,
     timestamp: Number,
+    group_id: Number,
 });
 var Chat = mongoose.model('MessageNew', chatSchema);
 
@@ -51,22 +60,26 @@ io.sockets.on('connection', function(socket) {
     name: adduserId
     params: roomId (its a room id of users)
     */
-    socket.on('adduserId', function(roomId) {
-        console.log("roomId=" + roomId);
-        socket.room = roomId;
-        socket.join(roomId);
-        var query = Chat.find({
-            request_id: roomId
-        });
-        query.limit(10);
-        query.sort('-sent').exec(function(err, docs) {
-            console.log(docs);
+     socket.on('adduserId', function (userIds) {
+        console.log("Userid=" + userIds);
+        socket.room = userIds;
+        socket.join(userIds);
+        var query = Chat.find({group_id: userIds});
+        //query.limit(10);
+        query.sort('-sent').exec(function (err, docs) {
+            console.log("Old Messages=" + docs);
             if (err)
                 throw err;
             socket.emit('load old messages', 'sankarshan', docs);
         });
-
     });
+
+    socket.on('adduser', function (username) {
+        socket.username = username;
+        usernames[username] = username;
+        socket.join(socket.room);
+    });
+
 
     /*
     name: sendchat (for group)
@@ -85,24 +98,12 @@ io.sockets.on('connection', function(socket) {
     }
     }
     */
-    socket.on('sendchat', function(data) {
-        console.log(JSON.parse(data));
-        console.log("Android=" + data);
-        var newChat = new Chat({
-            from_id: data.from_id,
-            to_id: data.to_id,
-            message: data.message,
-            message_type: data.message_type,
-            cat_id: data.cat_id,
-            sub_cat_id: data.sub_cat_id,
-            local_timestamp: data.local_timestamp,
-            request_id: data.room_id,
-            room_id: data.room_id,
-            timestamp: data.timestamp
-        });
-        newChat.save();
+    socket.on('sendchat', function (data) {
+        console.log(data);
         // we tell the client to execute 'updatechat' with 2 parameters
-        io.sockets.in(data.room_id).emit('updatechat', socket.username, data);
+        var newChat = new Chat({from_id: data.from_id, to_id: data.to_id, message: data.message, message_type: data.message_type, group_id: data.group_id});
+        newChat.save();
+        io.sockets.in(data.group_id).emit('updatechat', socket.username, data);
     });
 
 
