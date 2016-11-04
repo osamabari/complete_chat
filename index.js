@@ -76,7 +76,7 @@ io.sockets.on('connection', function (socket) {
   
 
     //for images
-      socket.on('user image', function(msg,callback){
+      socket.on('userImage', function(msg,callback){
         console.log('on user img.....');
         fs.exists(__dirname + "/" + msg.imageMetaData, function (exists) {
                   if (!exists) {
@@ -110,7 +110,7 @@ io.sockets.on('connection', function (socket) {
         //io.sockets.emit('user image',msg.imageData);
     });
 
-      socket.on('get img done', function(data){
+      socket.on('getImgDone', function(data){
         console.log('data==============>>>',data.length);
         //delete from tbl...where({imgflg==0})0 for msgs
         //remove chat only dont remove imgs.
@@ -134,7 +134,7 @@ io.sockets.on('connection', function (socket) {
             }
     });
     
-    socket.on('stop typing', function(data, callback){
+    socket.on('stopTyping', function(data, callback){
         if(data.oppUser in users)
         {
             users[data.oppUser].emit('stop typing');
@@ -143,7 +143,7 @@ io.sockets.on('connection', function (socket) {
     });
 
 
-    socket.on('share contact',function(data,callback){
+    socket.on('shareContact',function(data,callback){
         var dtc=JSON.stringify(data.contactdetails);
         console.log("contactdetails>>>>>>"+dtc);
         if(data.toUserId in users)
@@ -158,7 +158,7 @@ io.sockets.on('connection', function (socket) {
     });  
 
     //for whisper (one to one chat)
-        socket.on('send message', function(data, callback){
+        socket.on('sendMessage', function(data, callback){
        
         console.log('recived' + data);
         if(data.name){
