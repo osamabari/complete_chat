@@ -1,15 +1,15 @@
-var express = require('express')
-        , app = express()
-        , http = require('http')
-        , server = http.createServer(app)
-        , io = require('socket.io').listen(server),
-        mongoose = require('mongoose'),
-        users = {};
+var express = require('express'),
+    app = express(),
+    http = require('http'),
+    server = http.createServer(app),
+    io = require('socket.io').listen(server),
+    mongoose = require('mongoose'),
+    users = {};
 
 server.listen(3000);
 
 
-mongoose.connect('mongodb://localhost/chatData', function (err) {
+mongoose.connect('mongodb://localhost/chatData', function(err) {
     if (err) {
         console.log(err);
     } else {
@@ -24,7 +24,10 @@ var chatSchema = mongoose.Schema({
     message_type: Number,
     cat_id: Number,
     sub_cat_id: Number,
-    sent: {type: Date, default: Date.now},
+    sent: {
+        type: Date,
+        default: Date.now
+    },
     local_timestamp: Number,
     request_id: Number,
     room_id: Number,
@@ -40,7 +43,7 @@ var userIds = {};
 var clients = [];
 // rooms which are currently available in chat
 var clientInfo = {};
-io.sockets.on('connection', function (socket) {
+io.sockets.on('connection', function(socket) {
 
     //console.log(socket);
 
@@ -48,23 +51,25 @@ io.sockets.on('connection', function (socket) {
     name: adduserId
     params: roomId (its a room id of users)
     */
-    socket.on('adduserId', function (roomId) {
+    socket.on('adduserId', function(roomId) {
         console.log("roomId=" + roomId);
         socket.room = roomId;
         socket.join(roomId);
-        var query = Chat.find({request_id: roomId});
+        var query = Chat.find({
+            request_id: roomId
+        });
         query.limit(10);
-        query.sort('-sent').exec(function (err, docs) {
+        query.sort('-sent').exec(function(err, docs) {
             console.log(docs);
             if (err)
                 throw err;
             socket.emit('load old messages', 'sankarshan', docs);
         });
-        
+
     });
 
-     /*
-    name: sendchat
+    /*
+    name: sendchat (for group)
     desciptions: when the client emits 'sendchat', this listens and executes
     params: 
     {
@@ -80,10 +85,21 @@ io.sockets.on('connection', function (socket) {
     }
     }
     */
-    socket.on('sendchat', function (data) {
+    socket.on('sendchat', function(data) {
         console.log(JSON.parse(data));
-        console.log("Android="+data);
-        var newChat = new Chat({from_id: data.from_id, to_id: data.to_id, message: data.message, message_type: data.message_type, cat_id: data.cat_id, sub_cat_id: data.sub_cat_id, local_timestamp: data.local_timestamp, request_id: data.room_id, room_id: data.room_id, timestamp: data.timestamp});
+        console.log("Android=" + data);
+        var newChat = new Chat({
+            from_id: data.from_id,
+            to_id: data.to_id,
+            message: data.message,
+            message_type: data.message_type,
+            cat_id: data.cat_id,
+            sub_cat_id: data.sub_cat_id,
+            local_timestamp: data.local_timestamp,
+            request_id: data.room_id,
+            room_id: data.room_id,
+            timestamp: data.timestamp
+        });
         newChat.save();
         // we tell the client to execute 'updatechat' with 2 parameters
         io.sockets.in(data.room_id).emit('updatechat', socket.username, data);
@@ -91,8 +107,13 @@ io.sockets.on('connection', function (socket) {
 
 
 
+    socket.on('sendprivatechat', function(userId, msg) {
+        console.log("message recived" + userId, msg);
+        users[userId].emit('getprivatemsg', socket.username, key, msg);
+    });
 
-  
+
+
     /*
     name: userImage
     desciptions: when the client emits 'sendchat', this listens and executes
@@ -108,57 +129,68 @@ io.sockets.on('connection', function (socket) {
     }
     */
     //for images
-      socket.on('userImage', function(msg,callback){
+    socket.on('userImage', function(msg, callback) {
         console.log('on user img.....');
-        fs.exists(__dirname + "/" + msg.imageMetaData, function (exists) {
-                  if (!exists) {
-                  fs.mkdir(__dirname + "/" + msg.imageMetaData, function (e) {
-                           if (!e) {
-                           console.log("Created new directory without errors." + client.id);
-                           } else {
-                           console.log("Exception while creating new directory....");
-                           throw e;
-                           }
-                           });
-                  }
-                  });
-        fs.writeFile(__dirname + "/" + msg.imageMetaData + "/" + msg.imageMetaData + ".jpg",           msg.imageData, function (err) {
-                     if (err) {
-                     console.log('ERROR:: ' + err);
-                     throw err;
-                     }
-                     });
-        console.log('msg>>> ',msg);
-    
-        if(msg.toUserId in users){
-        console.log(msg.toUserId);
-        users[msg.toUserId].emit('user image',{image:msg.imageData, nick: socket.nickname});
-        
-        console.log('Whisper!');
-        } else{
+        fs.exists(__dirname + "/" + msg.imageMetaData, function(exists) {
+            if (!exists) {
+                fs.mkdir(__dirname + "/" + msg.imageMetaData, function(e) {
+                    if (!e) {
+                        console.log("Created new directory without errors." + client.id);
+                    } else {
+                        console.log("Exception while creating new directory....");
+                        throw e;
+                    }
+                });
+            }
+        });
+        fs.writeFile(__dirname + "/" + msg.imageMetaData + "/" + msg.imageMetaData + ".jpg", msg.imageData, function(err) {
+            if (err) {
+                console.log('ERROR:: ' + err);
+                throw err;
+            }
+        });
+        console.log('msg>>> ', msg);
+
+        if (msg.toUserId in users) {
+            console.log(msg.toUserId);
+            users[msg.toUserId].emit('user image', {
+                image: msg.imageData,
+                nick: socket.nickname
+            });
+
+            console.log('Whisper!');
+        } else {
             console.log('***error--');
-        //callback('Error!  Enter a valid user.');
+            //callback('Error!  Enter a valid user.');
         }
         //io.sockets.emit('user image',msg.imageData);
     });
 
-      socket.on('getImgDone', function(data){
-        console.log('data==============>>>',data.length);
+    socket.on('getImgDone', function(data) {
+        console.log('data==============>>>', data.length);
         //delete from tbl...where({imgflg==0})0 for msgs
         //remove chat only dont remove imgs.
         for (var i = 0; i < data.length; i++) {
             //data[i]
-            console.log('its i>>',data[i]._id);
-            console.log('its img>>',data[i].img);
+            console.log('its i>>', data[i]._id);
+            console.log('its img>>', data[i].img);
             //Chat.update({id:data[i].id},{isImgDownloaded:1}).exec();
-            var conditions = {id:data._id}, update = {isImgDownloaded:1}, options = { multi: true };
+            var conditions = {
+                    id: data._id
+                },
+                update = {
+                    isImgDownloaded: 1
+                },
+                options = {
+                    multi: true
+                };
             Chat.update(conditions, update, options, callback);
-            function callback (err, numAffected) {
-                        }
+
+            function callback(err, numAffected) {}
         }
     });
 
-       /*
+    /*
     name: typing
     desciptions: 
     params: 
@@ -170,15 +202,17 @@ io.sockets.on('connection', function (socket) {
     }
     */
 
-      socket.on('typing', function(data, callback){
-        if(data.oppUser in users)
-        {
-            users[data.oppUser].emit('typing',{oppUser:data.oppUser,currentUser:data.currentUser});
+    socket.on('typing', function(data, callback) {
+        if (data.oppUser in users) {
+            users[data.oppUser].emit('typing', {
+                oppUser: data.oppUser,
+                currentUser: data.currentUser
+            });
             console.log('typing ..... ');
-            }
+        }
     });
 
-        /*
+    /*
     name: stopTyping
     desciptions: 
     params: 
@@ -189,17 +223,16 @@ io.sockets.on('connection', function (socket) {
     }
     }
     */
-    
-    socket.on('stopTyping', function(data, callback){
-        if(data.oppUser in users)
-        {
+
+    socket.on('stopTyping', function(data, callback) {
+        if (data.oppUser in users) {
             users[data.oppUser].emit('stop typing');
             console.log('Stop typing ..... ');
         }
     });
 
 
-      /*
+    /*
     name: shareContact
     desciptions: 
     params: 
@@ -210,22 +243,22 @@ io.sockets.on('connection', function (socket) {
     }
     }
     */
-    socket.on('shareContact',function(data,callback){
-        var dtc=JSON.stringify(data.contactdetails);
-        console.log("contactdetails>>>>>>"+dtc);
-        if(data.toUserId in users)
-        {       
-           users[data.toUserId].emit('share contact',{contact:data.contactdetails, nick: socket.nickname});
-        }
-        else
-        {
+    socket.on('shareContact', function(data, callback) {
+        var dtc = JSON.stringify(data.contactdetails);
+        console.log("contactdetails>>>>>>" + dtc);
+        if (data.toUserId in users) {
+            users[data.toUserId].emit('share contact', {
+                contact: data.contactdetails,
+                nick: socket.nickname
+            });
+        } else {
             console.log('***error--');
-        //callback('Error!  Enter a valid user.');
+            //callback('Error!  Enter a valid user.');
         }
-    });  
+    });
 
 
-     /*
+    /*
     name: sendMessage
     desciptions: 
     params: 
@@ -238,41 +271,56 @@ io.sockets.on('connection', function (socket) {
     */
 
     //for whisper (one to one chat)
-        socket.on('sendMessage', function(data, callback){
-       
-        console.log('recived' + data);
-        if(data.name){
-           msg = data.msg;
+    socket.on('sendMessage', function(data, callback) {
 
-      
-                var name = data.name;
-                var msg = data.msg;
-                if(name in users){
-                    console.log('sending message to user!');
-                    users[name].emit('whisper', {msg: msg, nick: socket.nickname});
-                    console.log('message sent is: ' + msg);
-                    console.log('message sent nickname: ' + socket.nickname);
-                    console.log('Whisper!');
-                } else{
-                    //insert data here
-                    var newMsg = new Chat({msg: msg, img:null, nick: socket.nickname, receiver:name,imgFlag:0});
-                    newMsg.save(function(err){
-                        if(err) throw err;
-                        io.sockets.emit('new message', {msg: msg, nick: socket.nickname});
+        console.log('recived' + data);
+        if (data.name) {
+            msg = data.msg;
+
+
+            var name = data.name;
+            var msg = data.msg;
+            if (name in users) {
+                console.log('sending message to user!');
+                users[name].emit('whisper', {
+                    msg: msg,
+                    nick: socket.nickname
+                });
+                console.log('message sent is: ' + msg);
+                console.log('message sent nickname: ' + socket.nickname);
+                console.log('Whisper!');
+            } else {
+                //insert data here
+                var newMsg = new Chat({
+                    msg: msg,
+                    img: null,
+                    nick: socket.nickname,
+                    receiver: name,
+                    imgFlag: 0
+                });
+                newMsg.save(function(err) {
+                    if (err) throw err;
+                    io.sockets.emit('new message', {
+                        msg: msg,
+                        nick: socket.nickname
                     });
-                    callback(false);
-                }
-            
-        } else{
-            io.sockets.emit('new message', {msg: msg, nick: socket.nickname});
+                });
+                callback(false);
+            }
+
+        } else {
+            io.sockets.emit('new message', {
+                msg: msg,
+                nick: socket.nickname
+            });
         }
     });
 
 
-        
 
-          // when the user disconnects.. perform this
-    socket.on('disconnect', function () {
+
+    // when the user disconnects.. perform this
+    socket.on('disconnect', function() {
         // remove the username from global usernames list
         delete usernames[socket.username];
         // update list of users in chat, client-side
@@ -283,3 +331,29 @@ io.sockets.on('connection', function (socket) {
     });
 
 });
+
+//current date and time of any country!
+ function currentDateTime(city, offset) {
+    // create Date object for current location
+    d = new Date();
+
+    // convert to msec
+    // add local time zone offset
+    // get UTC time in msec
+    utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+
+    // create new Date object for different city
+    // using supplied offset
+    currentdate = new Date(utc + (3600000 * offset));
+
+    // return time as a string
+
+    var datetime = currentdate.getDate() + "/" +
+        (currentdate.getMonth() + 1) + "/" +
+        currentdate.getFullYear() + " @ " +
+        currentdate.getHours() + ":" +
+        currentdate.getMinutes() + ":" +
+        currentdate.getSeconds();
+    return datetime;
+
+}
