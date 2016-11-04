@@ -73,16 +73,7 @@ io.sockets.on('connection', function (socket) {
 
 
 
-    // when the user disconnects.. perform this
-    socket.on('disconnect', function () {
-        // remove the username from global usernames list
-        delete usernames[socket.username];
-        // update list of users in chat, client-side
-        io.sockets.emit('updateusers', usernames);
-        // echo globally that this client has left
-        //socket.broadcast.emit('updatechat', 'SERVER', socket.username + ' has disconnected');
-        socket.leave(socket.room);
-    });
+  
 
     //for images
       socket.on('user image', function(msg,callback){
@@ -166,7 +157,7 @@ io.sockets.on('connection', function (socket) {
         }
     });  
 
-    //for whisper
+    //for whisper (one to one chat)
         socket.on('send message', function(data, callback){
        
         console.log('recived' + data);
@@ -195,6 +186,18 @@ io.sockets.on('connection', function (socket) {
         } else{
             io.sockets.emit('new message', {msg: msg, nick: socket.nickname});
         }
+    });
+
+
+          // when the user disconnects.. perform this
+    socket.on('disconnect', function () {
+        // remove the username from global usernames list
+        delete usernames[socket.username];
+        // update list of users in chat, client-side
+        io.sockets.emit('updateusers', usernames);
+        // echo globally that this client has left
+        //socket.broadcast.emit('updatechat', 'SERVER', socket.username + ' has disconnected');
+        socket.leave(socket.room);
     });
 
 });
