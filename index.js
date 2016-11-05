@@ -29,6 +29,7 @@ var chatSchema = mongoose.Schema({
     from_id: Number, //senderId
     to_id: Number, //receiverId
     message: String,
+    message_id: String,
     message_type: Number,
     cat_id: Number,
     sub_cat_id: Number,
@@ -50,33 +51,67 @@ var Chat = mongoose.model('MessageNew', chatSchema);
 var usernames = {};
 var userIds = {};
 var clients = [];
+var users=[];
+var onlineClient={};
 // rooms which are currently available in chat
 var clientInfo = {};
 io.sockets.on('connection', function(socket) {
 
     //console.log(socket);
 
+
+     socket.on('chkUser',function(data) { 
+        console.log(data)
+       
+        var chk = users.indexOf(data.userId);
+         // if(chk==(-1)) {
+          var curdatetime = currentDateTime('India','5.5');
+          users.push(data.userId); 
+          var data = {name:data.userId, msg:' joined chat on '+curdatetime+' !', color:'text-success'};
+         // usersActivity.push(data);
+          onlineClient[data.name] = socket; 
+         // }
+           console.log(users)
+         socket.emit("chkUser", chk);   
+     }); 
+
     /*
     name: adduserId
     params: roomId (its a room id of users)
     */
-     socket.on('adduserId', function (userIds) {
-        console.log("Userid=" + userIds);
-        socket.room = userIds;
-        socket.join(userIds);
-        var query = Chat.find({group_id: userIds});
-        //query.limit(10);
+    //  socket.on('adduserId', function (userIds) {
+    //     console.log("Userid=" + userIds);
+    //     socket.room = userIds;
+    //     socket.join(userIds);
+    //     var query = Chat.find({group_id: userIds});
+    //     //query.limit(10);
+    //     query.sort('-sent').exec(function (err, docs) {
+    //         console.log("Old Messages=" + docs);
+    //         if (err)
+    //             throw err;
+    //         socket.emit('load old messages', 'sankarshan', docs);
+    //     });
+    // });
+
+
+       socket.on('connectGroup', function (data) {
+        console.log("Userid=" + data.groupId);
+        socket.room = data.groupId;
+        socket.join(data.groupId);
+        socket.join(socket.room);
+        var query = Chat.find({group_id: data.groupId});
+        query.limit(10);
         query.sort('-sent').exec(function (err, docs) {
             console.log("Old Messages=" + docs);
             if (err)
                 throw err;
-            socket.emit('load old messages', 'sankarshan', docs);
+            socket.emit('loadOldMessages', docs);
         });
     });
 
     socket.on('adduser', function (username) {
         socket.username = username;
-        usernames[username] = username;
+        users[username] = username;
         socket.join(socket.room);
     });
 
@@ -106,11 +141,30 @@ io.sockets.on('connection', function(socket) {
         io.sockets.in(data.group_id).emit('updatechat', socket.username, data);
     });
 
+  socket.on('sendGroup', function (data) {
+        console.log(data);
+        // we tell the client to execute 'updatechat' with 2 parameters
+        var newChat = new Chat({from_id: data.from_id, message: data.message, message_type: data.message_type, group_id: data.group_id,message_id:data.message_id});
+        newChat.save();
+        io.sockets.in(data.group_id).emit('recivedGroup', data);
+    });
 
 
-    socket.on('sendprivatechat', function(userId, msg) {
-        console.log("message recived" + userId, msg);
-        users[userId].emit('getprivatemsg', socket.username, key, msg);
+    socket.on('sendprivatechat', function(data) {
+        console.log(data);
+var newChat = new Chat({from_id: data.from_id, to_id: data.to_id, message: data.message, message_type: data.message_type});
+        newChat.save();
+        //io.sockets.in(data.group_id).emit('updatechat', socket.username, data);
+
+        // users[data.to_id].emit('getprivatemsg',  data);
+        var clientSocket = onlineClient[data.to_id];
+///console.log(clientSocket)
+if(clientSocket == null){
+}else{
+clientSocket.emit('getprivatemsg', data);
+}
+
+
     });
 
 
@@ -323,7 +377,8 @@ io.sockets.on('connection', function(socket) {
     // when the user disconnects.. perform this
     socket.on('disconnect', function() {
         // remove the username from global usernames list
-        delete usernames[socket.username];
+        delete users[socket.username];
+        
         // update list of users in chat, client-side
         io.sockets.emit('updateusers', usernames);
         // echo globally that this client has left
